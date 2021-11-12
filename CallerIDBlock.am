@@ -1,0 +1,55 @@
+<?xml version="1.0" ?>
+<lc:applicationManifest 
+	lc:appUri="http://uclobby.com/2014/07/31/CallerIDBlock" 
+	xmlns:lc="http://schemas.microsoft.com/lcs/2006/05">
+	<lc:requestFilter methodNames="INVITE" strictRoute="true"/>
+    <lc:responseFilter reasonCodes="NONE"/>
+    <lc:scriptOnly/>
+    <lc:file name="BlockedTelephoneNumbers" 
+	path=".\BlockedTelephoneNumbers.txt"
+	delimitedBy="comma"
+	keyColumnName="Phone"
+	static="false">
+        <lc:column name="Phone" />
+        <lc:column name="Action" />
+    </lc:file>
+	<lc:file name="CallerIDBlockConfig" 
+	path=".\CallerIDBlock.config"
+	delimitedBy="comma"
+	keyColumnName="Setting"
+	static="false">
+        <lc:column name="Setting" />
+        <lc:column name="Value" />
+    </lc:file>
+	<lc:splScript><![CDATA[
+
+	/*
+		Module Name: 	CallerIDBlock.am   
+		Version:		1.2
+	*/
+
+	log = CallerIDBlockConfig["log"].Value;
+
+	fromUser = GetUserName(GetUri(sipRequest.From));
+	toUser = GetUserName(GetUri(sipRequest.To));
+	sep = IndexOfString(fromUser, ";");
+
+	if(sep != -1) {
+		fromUser = SubString(fromUser, 0, sep);
+	}
+
+	action = BlockedTelephoneNumbers[fromUser].Action;
+	if(action == "block") 
+	{
+		if((log == "both") || (log == "rejected")){
+			Log ("Event", false, "Call Rejected by CallerIDBlock \n", Concatenate("From: ", fromUser, " - ", sipRequest.From ),"\n", Concatenate("To: ", sipRequest.To),"\n");
+		}
+		Respond(404, "Not Found");
+	} else {
+		if(log == "both"){
+			Log ("Event", false, "Call Allowed by CallerIDBlock \n",  Concatenate("From: ", fromUser, " - ", sipRequest.From ),"\n", Concatenate("To: ", sipRequest.To),"\n");
+		}
+	}
+    return;
+	]]></lc:splScript>
+</lc:applicationManifest>
